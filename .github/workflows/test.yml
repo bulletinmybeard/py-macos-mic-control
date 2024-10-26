@@ -10,10 +10,6 @@ on:
       - development
     types: [opened, synchronize, reopened]
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: true
-
 jobs:
   setup:
     name: Setup Poetry
@@ -72,9 +68,42 @@ jobs:
           poetry run black . --check --diff
           poetry run flake8 .
 
+  security:
+    name: Security Scan
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pipx install poetry
+      - uses: actions/cache@v4
+        with:
+          path: ./.venv
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+
+      - name: Configure Poetry
+        run: poetry config virtualenvs.create false
+
+      - name: Run Bandit
+        run: poetry run bandit -r mic_control/ -v
+
+      - name: Run Safety Check
+        continue-on-error: true
+        run: |
+          poetry run pip install safety
+          poetry run safety check --ignore 70612
+
+      - name: Run pip-audit
+        continue-on-error: true
+        run: |
+          poetry run pip install pip-audit
+          poetry run pip-audit --ignore jinja2
+
   test:
     name: Test Python ${{ matrix.python-version }}
-    needs: setup
+    needs: [lint, security]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -109,36 +138,3 @@ jobs:
 
       - name: Run tests with coverage
         run: poetry run pytest tests/ -v --cov=mic_control --cov-report=term-missing
-
-  security:
-    name: Security Scan
-    needs: setup
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: pipx install poetry
-      - uses: actions/cache@v4
-        with:
-          path: ./.venv
-          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
-
-      - name: Configure Poetry
-        run: poetry config virtualenvs.create false
-
-      - name: Run Bandit
-        run: poetry run bandit -r mic_control/ -v
-
-      - name: Run Safety Check
-        continue-on-error: true
-        run: |
-          poetry run pip install safety
-          poetry run safety check --ignore 70612
-
-      - name: Run pip-audit
-        continue-on-error: true
-        run: |
-          poetry run pip install pip-audit
-          poetry run pip-audit --ignore jinja2
