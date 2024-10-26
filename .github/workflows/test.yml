@@ -48,9 +48,13 @@ jobs:
           path: ./.venv
           key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}-${{ github.event_name }}
 
+      - name: Configure Poetry for virtual environment
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
+
       - name: Install Dependencies
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: poetry install
+        run: poetry install --with dev
 
   lint:
     name: Lint
