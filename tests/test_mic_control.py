@@ -67,7 +67,6 @@ def test_is_audio_active_success(mock_sounddevice):
     # Simulate audio recording with values that will produce RMS > threshold
     mock_rec.return_value = np.array([[0.1], [0.2], [0.3]])
 
-    # Changed to use 'assert' directly on the boolean result
     assert is_audio_active(threshold=0.01, duration=1.0)
 
 
@@ -76,7 +75,6 @@ def test_is_audio_active_no_sound(mock_sounddevice):
     # Simulate audio recording with values that will produce RMS < threshold
     mock_rec.return_value = np.array([[0.001], [0.002], [0.001]])
 
-    # Changed to use 'not' for negative assertion
     assert not is_audio_active(threshold=0.01, duration=1.0)
 
 
@@ -84,7 +82,6 @@ def test_is_audio_active_error(mock_sounddevice):
     mock_query, _, _ = mock_sounddevice
     mock_query.side_effect = Exception("Device error")
 
-    # Changed to use 'not' for negative assertion
     assert not is_audio_active()
 
 
