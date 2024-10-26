@@ -46,7 +46,7 @@ jobs:
         id: cache
         with:
           path: ./.venv
-          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}-${{ github.event_name }}
 
       - name: Install Dependencies
         if: steps.cache.outputs.cache-hit != 'true'
