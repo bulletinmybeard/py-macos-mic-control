@@ -102,22 +102,6 @@ poetry run mic-control &
 
 ## Development
 
-### Project Structure
-```
-py-macos-mic-control/
-├── pyproject.toml         # Poetry configuration
-├── poetry.lock           # Lock file
-├── README.md
-├── LICENSE
-├── .flake8              # Flake8 configuration
-├── tests/
-│   └── test_mic_control.py
-└── mic_control/
-    ├── __init__.py
-    ├── __main__.py      # Entry point & argument parsing
-    └── main.py          # Core functionality
-```
-
 ### Testing
 
 Run basic tests:
