@@ -102,8 +102,8 @@ jobs:
           poetry run pip-audit --ignore jinja2
 
   test:
-    name: test (3.12)
-    needs: [lint, security]
+    name: test
+    needs: [ lint, security ]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -138,3 +138,4 @@ jobs:
 
       - name: Run tests with coverage
         run: poetry run pytest tests/ -v --cov=mic_control --cov-report=term-missing
+  
