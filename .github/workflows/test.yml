@@ -59,30 +59,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: Install Poetry
-        run: pipx install poetry
-
-      - name: Cache Poetry virtualenv
-        uses: actions/cache@v4
-        id: cache
+      - run: pipx install poetry
+      - uses: actions/cache@v4
         with:
           path: ./.venv
           key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
 
-      - name: Run isort
-        run: poetry run isort . --check-only --diff
-
-      - name: Run black
-        run: poetry run black . --check --diff
-
-      - name: Run flake8
-        run: poetry run flake8 .
+      - name: Run Code Quality Checks
+        run: |
+          poetry run isort . --check-only --diff
+          poetry run black . --check --diff
+          poetry run flake8 .
 
   test:
     name: Test Python ${{ matrix.python-version }}
@@ -105,15 +95,36 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install Poetry
-        run: pipx install poetry
-
-      - name: Cache Poetry virtualenv
-        uses: actions/cache@v4
-        id: cache
+      - run: pipx install poetry
+      - uses: actions/cache@v4
         with:
           path: ./.venv
           key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}-py-${{ matrix.python-version }}
 
       - name: Run tests with coverage
         run: poetry run pytest tests/ -v --cov=mic_control --cov-report=term-missing
+
+  security:
+    name: Security Scan
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pipx install poetry
+      - uses: actions/cache@v4
+        with:
+          path: ./.venv
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+
+      - name: Run Security Scans
+        run: |
+          # Using installed bandit from poetry deps
+          poetry run bandit -r mic_control/ -v
+
+          # Install and run additional security tools
+          poetry run pip install safety pip-audit
+          poetry run safety check
+          poetry run pip-audit

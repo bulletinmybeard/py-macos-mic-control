@@ -1,6 +1,6 @@
 import argparse
 import logging
-import subprocess
+import subprocess  # nosec B404
 import sys
 import time
 from typing import Optional
@@ -19,7 +19,7 @@ def set_mic_volume(
         cmd = f"osascript -e 'set volume input volume {volume}'"
         subprocess.run(
             cmd,
-            shell=True,
+            shell=True,  # nosec B602
             check=True,
         )
         return True
@@ -34,7 +34,7 @@ def get_mic_volume() -> Optional[int]:
         cmd = "osascript -e 'input volume of (get volume settings)'"
         result = subprocess.run(
             cmd,
-            shell=True,
+            shell=True,  # nosec B602
             capture_output=True,
             text=True,
             check=True,

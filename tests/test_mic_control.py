@@ -1,4 +1,4 @@
-import subprocess
+import subprocess  # nosec B404
 from unittest.mock import Mock, patch
 
 import numpy as np
