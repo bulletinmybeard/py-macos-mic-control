@@ -3,6 +3,7 @@ import logging
 import subprocess
 import sys
 import time
+from typing import Optional
 
 import numpy as np
 import sounddevice as sd
@@ -12,7 +13,7 @@ from mic_control.utils import validate_log_path
 
 def set_mic_volume(
     volume,
-):
+) -> bool:
     """Set the microphone input volume (0-100)."""
     try:
         cmd = f"osascript -e 'set volume input volume {volume}'"
@@ -27,7 +28,7 @@ def set_mic_volume(
         return False
 
 
-def get_mic_volume():
+def get_mic_volume() -> Optional[int]:
     """Get current microphone input volume."""
     try:
         cmd = "osascript -e 'input volume of (get volume settings)'"
@@ -47,14 +48,8 @@ def get_mic_volume():
 def is_audio_active(
     threshold=0.01,
     duration=1.0,
-):
-    """
-    Check if there's significant audio activity on the microphone.
-
-    Args:
-        threshold: RMS threshold for considering audio as active
-        duration: Duration in seconds to sample audio
-    """
+) -> bool:
+    """Check if there's significant audio activity on the microphone."""
     try:
         # Get default input device
         device_info = sd.query_devices(kind="input")
@@ -81,11 +76,8 @@ def is_audio_active(
 
 def detect_call_activity(
     audio_check_duration=5,
-):
-    """
-    Detect if we're likely in a call by monitoring audio activity over time.
-    Returns True if consistent audio activity is detected.
-    """
+) -> bool:
+    """Detect if we're likely in a call by monitoring audio activity over time."""
     audio_samples = []
 
     # Take several samples over a period
@@ -98,7 +90,7 @@ def detect_call_activity(
     return sum(audio_samples) / len(audio_samples) >= 0.4
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Automatic microphone volume control for macOS calls and meetings"
     )
@@ -141,7 +133,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
     args = parse_args()
 
     log_path = args.log_path
