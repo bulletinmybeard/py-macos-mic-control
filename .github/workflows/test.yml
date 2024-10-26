@@ -102,7 +102,7 @@ jobs:
           poetry run pip-audit --ignore jinja2
 
   test:
-    name: Test Python ${{ matrix.python-version }}
+    name: test (3.12)
     needs: [lint, security]
     runs-on: ubuntu-latest
     strategy:
