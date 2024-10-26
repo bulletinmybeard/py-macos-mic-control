@@ -249,3 +249,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 3. For logging issues:
     - Ensure write permissions for the log file location
     - Check available disk space
+
