@@ -5,3 +5,10 @@ indent-char = ' '
 quote-mode = single
 max-function-length = 50
 max-module-length = 400
+exclude = 
+    .venv,
+    .git,
+    __pycache__,
+    build,
+    dist,
+    *.egg-info

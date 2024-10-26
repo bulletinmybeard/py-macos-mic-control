@@ -35,10 +35,17 @@ mic-control = "mic_control.__main__:main"
 line-length = 100
 target-version = ['py312']
 include = '\.pyi?$'
+extend-exclude = '''
+# A regex preceded with ^/ will apply only to files and directories
+# in the root of the project.
+^/.venv
+'''
 
 [tool.isort]
 profile = "black"
 multi_line_output = 3
+line_length = 100
+extend_skip = [".venv"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"
