@@ -76,4 +76,4 @@ jobs:
 
       - name: Run tests
         run: |
-          poetry run pytest tests/ -v --cov=mic_control --cov-report=xml
+          poetry run pytest tests/ -v --cov=mic_control --cov-report=term-missing
