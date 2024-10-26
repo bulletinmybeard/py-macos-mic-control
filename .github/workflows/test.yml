@@ -4,31 +4,111 @@ on:
   push:
     branches:
       - development
-    paths-ignore:
-      - '**.md'
-      - 'LICENSE'
-      - '.gitignore'
   pull_request:
     branches:
       - master
       - development
     types: [opened, synchronize, reopened]
-    paths-ignore:
-      - '**.md'
-      - 'LICENSE'
-      - '.gitignore'
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: true
 
 jobs:
+  setup:
+    name: Setup Poetry
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Configure Poetry
+        run: |
+          poetry config virtualenvs.create false
+
+      - name: Cache Poetry virtualenv
+        uses: actions/cache@v4
+        id: cache
+        with:
+          path: ./.venv
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}-${{ github.event_name }}
+
+      - name: Configure Poetry for virtual environment
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
+
+      - name: Install Dependencies
+        run: poetry install --with dev
+
+  lint:
+    name: Lint
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pipx install poetry
+      - uses: actions/cache@v4
+        with:
+          path: ./.venv
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+
+      - name: Configure Poetry
+        run: poetry config virtualenvs.create false
+
+      - name: Run Code Quality Checks
+        run: |
+          poetry run isort . --check-only --diff
+          poetry run black . --check --diff
+          poetry run flake8 .
+
+  security:
+    name: Security Scan
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pipx install poetry
+      - uses: actions/cache@v4
+        with:
+          path: ./.venv
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+
+      - name: Configure Poetry
+        run: poetry config virtualenvs.create false
+
+      - name: Run Bandit
+        run: poetry run bandit -r mic_control/ -v
+
+      - name: Run Safety Check
+        continue-on-error: true
+        run: |
+          poetry run pip install safety
+          poetry run safety check --ignore 70612
+
+      - name: Run pip-audit
+        continue-on-error: true
+        run: |
+          poetry run pip install pip-audit
+          poetry run pip-audit --ignore jinja2
+
   test:
+    name: test
+    needs: [ lint, security ]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.12"]
+        python-version: [ "3.12" ]
     steps:
       - uses: actions/checkout@v4
 
@@ -42,38 +122,20 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install Poetry
-        run: |
-          pipx install poetry
+      - run: pipx install poetry
+      - uses: actions/cache@v4
+        with:
+          path: ./.venv
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}-py-${{ matrix.python-version }}
 
-      - name: Configure Poetry
+      - name: Configure Poetry for virtual environment
         run: |
           poetry config virtualenvs.create true
           poetry config virtualenvs.in-project true
 
-      - name: Cache Poetry virtualenv
-        uses: actions/cache@v4
-        id: cache
-        with:
-          path: ./.venv
-          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+      - name: Install Dependencies (including dev)
+        run: poetry install --with dev
 
-      - name: Install Dependencies
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: poetry install
-
-      - name: Run isort check
-        run: |
-          poetry run isort . --check-only --diff
-
-      - name: Run black check
-        run: |
-          poetry run black . --check --diff
-
-      - name: Run flake8
-        run: |
-          poetry run flake8 .
-
-      - name: Run tests
-        run: |
-          poetry run pytest tests/ -v --cov=mic_control --cov-report=term-missing
+      - name: Run tests with coverage
+        run: poetry run pytest tests/ -v --cov=mic_control --cov-report=term-missing
+  

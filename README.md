@@ -1,10 +1,11 @@
 # py-macos-mic-control
 
-[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Poetry](https://img.shields.io/badge/poetry-package-blue)](https://python-poetry.org/)
 [![macOS](https://img.shields.io/badge/platform-macOS-lightgrey)](https://www.apple.com/macos/)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![Test](https://github.com/bulletinmybeard/py-macos-mic-control/actions/workflows/test.yml/badge.svg?branch=development)](https://github.com/bulletinmybeard/py-macos-mic-control/actions/workflows/test.yml)
+[![Security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A Python utility that automatically maintains consistent microphone input volume during calls and meetings on macOS. It detects active audio sessions and adjusts the microphone level accordingly, ensuring your voice comes through at an optimal volume level at all times.
 
@@ -100,23 +101,106 @@ To run the script in the background:
 poetry run mic-control &
 ```
 
-## Development
+## CI/CD
 
-### Project Structure
+This project uses GitHub Actions for continuous integration and automated testing. The workflow runs on push to `development` branch and pull requests to `master` and `development` branches.
+
+### Workflow Jobs
+
+| Job | Description | Dependencies |
+|:---------|:------------|:---------|
+| `setup` | Configures Poetry and installs dependencies | None |
+| `lint` | Runs code quality checks (isort, black, flake8) | `setup` |
+| `test` | Runs pytest with coverage reporting | `setup` |
+| `security` | Performs security scans using multiple tools | `setup` |
+
+### Security Scans
+
+The security job runs multiple tools:
+- Bandit for Python security linting
+- Safety for checking known vulnerabilities
+- pip-audit for dependency auditing
+
+### Triggers
+
+- **Push**: Triggered on pushes to `development` branch
+- **Pull Request**: Triggered on PRs to `master` and `development` branches
+- **Path Filters**: Ignores changes to documentation files and licenses
+
+### Caching
+
+The workflow uses caching for Poetry virtual environments to speed up subsequent runs:
+```yaml
+key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
 ```
-py-macos-mic-control/
-├── pyproject.toml         # Poetry configuration
-├── poetry.lock           # Lock file
-├── README.md
-├── LICENSE
-├── .flake8              # Flake8 configuration
-├── tests/
-│   └── test_mic_control.py
-└── mic_control/
-    ├── __init__.py
-    ├── __main__.py      # Entry point & argument parsing
-    └── main.py          # Core functionality
+
+### Local Testing
+
+You can run the same checks locally:
+
+```bash
+# Lint checks
+poetry run isort . --check-only --diff
+poetry run black . --check --diff
+poetry run flake8 .
+
+# Tests with coverage
+poetry run pytest tests/ -v --cov=mic_control --cov-report=term-missing
+
+# Security checks
+poetry run bandit -r mic_control/ -v
+poetry run safety check
+poetry run pip-audit
 ```
+
+### Requirements
+
+The workflow runs on Ubuntu Latest with Python 3.12 and requires these system dependencies:
+- `portaudio19-dev`
+- `python3-all-dev`
+
+## Security
+
+### Bandit
+
+Bandit is a security linter designed to find common security vulnerabilities in Python code through static analysis.
+
+Run a security check:
+```bash
+# Basic scan
+poetry run bandit -r mic_control/
+
+# Detailed scan with more information
+poetry run bandit -r mic_control/ -v
+
+# Most verbose scan with low-level logging and issue info
+poetry run bandit -r mic_control/ -ll -ii
+```
+
+Command flags:
+- `-r`: Recursive scanning
+- `-v`: Verbose output showing files scanned and metrics
+- `-ll`: Low-level logging (shows configuration details)
+- `-ii`: Include more information about issues found
+
+Example output:
+```bash
+Files in scope (3):
+    mic_control/__init__.py (score: {SEVERITY: 0, CONFIDENCE: 0})
+    mic_control/__main__.py (score: {SEVERITY: 0, CONFIDENCE: 0})
+    mic_control/utils.py (score: {SEVERITY: 0, CONFIDENCE: 0})
+
+Test results:
+    No issues identified.
+
+Code scanned:
+    Total lines of code: 189
+    Total lines skipped (#nosec): 2
+```
+
+The project uses Bandit configurations in `pyproject.toml` and inline code comments to manage security exceptions where appropriate.
+
+## Development
 
 ### Testing
 
