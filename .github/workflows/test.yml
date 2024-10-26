@@ -103,8 +103,10 @@ jobs:
           path: ./.venv
           key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}-py-${{ matrix.python-version }}
 
-      - name: Configure Poetry
-        run: poetry config virtualenvs.create false
+      - name: Configure Poetry for virtual environment
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
 
       - name: Install Dependencies (including dev)
         run: poetry install --with dev
