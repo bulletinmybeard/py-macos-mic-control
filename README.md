@@ -5,8 +5,8 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Poetry](https://img.shields.io/badge/poetry-package-blue)](https://python-poetry.org/)
 [![macOS](https://img.shields.io/badge/platform-macOS-lightgrey)](https://www.apple.com/macos/)
-[![Test](https://github.com/RobinSchulz/py-macos-mic-control/actions/workflows/test.yml/badge.svg)](https://github.com/RobinSchulz/py-macos-mic-control/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/RobinSchulz/py-macos-mic-control/branch/master/graph/badge.svg)](https://codecov.io/gh/RobinSchulz/py-macos-mic-control)
+[![Test](https://github.com/bulletinmybeard/py-macos-mic-control/actions/workflows/test.yml/badge.svg?branch=development)](https://github.com/bulletinmybeard/py-macos-mic-control/actions/workflows/test.yml)
 
 A Python utility that automatically maintains consistent microphone input volume during calls and meetings on macOS. It detects active audio sessions and adjusts the microphone level accordingly, ensuring your voice comes through at an optimal volume level at all times.
 
@@ -35,7 +35,7 @@ curl -sSL https://install.python-poetry.org | python3 -
 
 2. Clone this repository:
 ```bash
-git clone https://github.com/RobinSchulz/py-macos-mic-control.git
+git clone https://github.com/bulletinmybeard/py-macos-mic-control.git
 cd py-macos-mic-control
 ```
 
