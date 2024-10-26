@@ -1,0 +1,79 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - development
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
+  pull_request:
+    branches:
+      - master
+      - development
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y portaudio19-dev python3-all-dev
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        run: |
+          pipx install poetry
+
+      - name: Configure Poetry
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
+
+      - name: Cache Poetry virtualenv
+        uses: actions/cache@v4
+        id: cache
+        with:
+          path: ./.venv
+          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+
+      - name: Install Dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: poetry install
+
+      - name: Run isort check
+        run: |
+          poetry run isort . --check-only --diff
+
+      - name: Run black check
+        run: |
+          poetry run black . --check --diff
+
+      - name: Run flake8
+        run: |
+          poetry run flake8 .
+
+      - name: Run tests
+        run: |
+          poetry run pytest tests/ -v --cov=mic_control --cov-report=term-missing

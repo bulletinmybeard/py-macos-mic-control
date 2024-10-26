@@ -1,0 +1,6 @@
+.DS_STORE
+.venv
+.idea
+.coverage
+coverage.xml
+*.log

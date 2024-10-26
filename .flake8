@@ -1,0 +1,14 @@
+[flake8]
+max-line-length = 100
+indent-width = 4
+indent-char = ' '
+quote-mode = single
+max-function-length = 50
+max-module-length = 400
+exclude = 
+    .venv,
+    .git,
+    __pycache__,
+    build,
+    dist,
+    *.egg-info
