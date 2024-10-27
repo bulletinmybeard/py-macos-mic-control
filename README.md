@@ -2,7 +2,7 @@
 
 [![macOS](https://img.shields.io/badge/platform-macOS-lightgrey)](https://www.apple.com/macos/)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![Test](https://github.com/bulletinmybeard/py-macos-mic-control/actions/workflows/test.yml/badge.svg?branch=development)](https://github.com/bulletinmybeard/py-macos-mic-control/actions/workflows/test.yml)
+[![Test](https://github.com/bulletinmybeard/py-macos-mic-control/actions/workflows/test.yml/badge.svg)](https://github.com/bulletinmybeard/py-macos-mic-control/actions/workflows/test.yml)
 [![Security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
