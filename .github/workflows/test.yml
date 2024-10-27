@@ -3,11 +3,18 @@ name: Test
 on:
   push:
     branches:
+      - master
       - development
+      - 'feature/**'
+      - 'bugfix/**'
+      - 'hotfix/**'
+      - 'refactor/**'
+      - 'chore/**'
+      - 'docs/**'
+      - 'test/**'
   pull_request:
     branches:
       - master
-      - development
     types: [opened, synchronize, reopened]
 
 jobs:
@@ -138,4 +145,3 @@ jobs:
 
       - name: Run tests with coverage
         run: poetry run pytest tests/ -v --cov=mic_control --cov-report=term-missing
-  
