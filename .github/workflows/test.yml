@@ -144,5 +144,8 @@ jobs:
       - name: Upload coverage reports
         uses: codecov/codecov-action@v3
         if: matrix.python-version == '3.12'
+        continue-on-error: true
         with:
-          fail_ci_if_error: true
+          fail_ci_if_error: false
+          # Note: To avoid rate limits, add CODECOV_TOKEN to your repository secrets
+          # Get your token at https://app.codecov.io/gh/bulletinmybeard/py-macos-mic-control/settings
