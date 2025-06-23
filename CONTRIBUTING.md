@@ -1,6 +1,6 @@
-# Contributing to py-obsidian-mkdocs
+# Contributing to py-macos-mic-control
 
-Thank you for your interest in contributing to py-obsidian-mkdocs!
+Thank you for your interest in contributing to py-macos-mic-control!
 
 ## Development Process
 1. Fork the repository

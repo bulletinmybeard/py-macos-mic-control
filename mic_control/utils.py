@@ -47,3 +47,4 @@ def validate_log_path(log_path: str) -> Path:
 
     except Exception as e:
         sys.exit(f"Error: Invalid log path {log_path}: {e}")
+        return None

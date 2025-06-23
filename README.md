@@ -66,6 +66,9 @@ poetry run mic-control --target-volume 70 --active-interval 5 --log-path ~/logs/
 | `--idle-interval` | Seconds between checks when idle | 15 | > 0 |
 | `--call-interval` | Seconds between full call detection checks | 30 | > 0 |
 | `--log-path` | Path to the log file | `mic_control.log` | Valid file path |
+| `--config` | Path to configuration file | None | Valid file path |
+| `--save-config` | Save current configuration to file | False | Flag |
+| `--debug` | Enable debug logging | False | Flag |
 
 Get help:
 ```bash
@@ -287,22 +290,61 @@ Example log output:
 2024-10-24 13:27:08,326 - In call: Adjusting volume from 64 to 80
 ```
 
+## Configuration
+
+The application supports configuration through:
+
+1. **Command-line arguments** - Override any setting via CLI flags
+2. **Configuration file** - JSON file with persistent settings
+3. **Default values** - Sensible defaults for all settings
+
+### Configuration File
+
+Save your preferred settings:
+```bash
+poetry run mic-control --target-volume 75 --active-interval 5 --save-config
+```
+
+This creates `~/.mic_control/config.json` with your settings. The config file supports additional advanced settings not available via CLI:
+- `audio_threshold`: RMS threshold for audio detection (default: 0.01)
+- `sample_duration`: Duration of each audio sample in seconds (default: 1.0)
+- `call_detection_duration`: Number of samples for call detection (default: 5)
+- `call_activity_ratio`: Minimum ratio of active samples to detect a call (default: 0.4)
+
 ## Technical Details
+
+### Architecture
+
+The application uses a modular architecture with clear separation of concerns:
+
+- **AudioMonitor**: Handles audio sampling and call detection
+- **VolumeController**: Abstract interface for volume control with platform-specific implementations
+- **Config**: Centralized configuration management
+- **MicrophoneController**: Main orchestrator that coordinates all components
 
 ### Call Detection
 
 The script determines if you're in a call by:
 1. Sampling audio input at regular intervals
 2. Calculating RMS (Root Mean Square) value of the audio
-3. Comparing against a threshold
-4. Requiring sustained audio activity (40% of samples) to confirm call status
+3. Comparing against a configurable threshold
+4. Requiring sustained audio activity (configurable ratio of samples) to confirm call status
 
 ### Volume Control
 
-Uses macOS's `osascript` to:
-- Read current microphone volume
-- Set new volume levels
-- Maintain target volume during calls
+The volume control system features:
+- **Retry logic**: Automatic retries with exponential backoff for transient failures
+- **Caching**: Last known volume is cached for resilience
+- **Verification**: Volume changes are verified after setting
+- **Platform abstraction**: Easy to extend for other platforms beyond macOS
+
+### Error Handling
+
+Robust error handling throughout:
+- Graceful degradation when operations fail
+- Comprehensive logging for debugging
+- Signal handlers for clean shutdown (SIGINT, SIGTERM)
+- Automatic cleanup of resources
 
 ## Contributing
 
