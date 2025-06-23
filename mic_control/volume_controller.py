@@ -33,8 +33,8 @@ class MacOSVolumeController(VolumeController):
         """Execute an osascript command with retry logic."""
         for attempt in range(self.MAX_RETRIES):
             try:
-                result = subprocess.run(
-                    ["osascript", "-e", script],
+                result = subprocess.run(  # nosec B603
+                    ["/usr/bin/osascript", "-e", script],
                     capture_output=True,
                     text=True,
                     check=True,

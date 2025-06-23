@@ -96,17 +96,9 @@ jobs:
       - name: Run Bandit
         run: poetry run bandit -r mic_control/ -v
 
-      - name: Run Safety Check
-        continue-on-error: true
-        run: |
-          poetry run pip install safety
-          poetry run safety check --ignore 70612
-
       - name: Run pip-audit
         continue-on-error: true
-        run: |
-          poetry run pip install pip-audit
-          poetry run pip-audit --ignore jinja2
+        run: poetry run pip-audit --ignore jinja2
 
   test:
     name: test

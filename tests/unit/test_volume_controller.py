@@ -35,7 +35,7 @@ class TestMacOSVolumeController:
 
         assert volume == 75
         mock_subprocess.assert_called_once_with(
-            ["osascript", "-e", "input volume of (get volume settings)"],
+            ["/usr/bin/osascript", "-e", "input volume of (get volume settings)"],
             capture_output=True,
             text=True,
             check=True,
@@ -107,7 +107,7 @@ class TestMacOSVolumeController:
 
         assert result is True
         mock_subprocess.assert_called_with(
-            ["osascript", "-e", "set volume input volume 80"],
+            ["/usr/bin/osascript", "-e", "set volume input volume 80"],
             capture_output=True,
             text=True,
             check=True,
