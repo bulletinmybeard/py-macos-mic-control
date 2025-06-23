@@ -1,103 +1,103 @@
 import argparse
 import logging
-import subprocess  # nosec B404
+import signal
 import sys
 import time
-from typing import Optional
+from pathlib import Path
 
-import numpy as np
-import sounddevice as sd
-
+from mic_control.audio_monitor import AudioMonitor
+from mic_control.config import Config
 from mic_control.utils import validate_log_path
+from mic_control.volume_controller import get_volume_controller
 
 
-def set_mic_volume(
-    volume,
-) -> bool:
-    """Set the microphone input volume (0-100)."""
-    try:
-        cmd = f"osascript -e 'set volume input volume {volume}'"
-        subprocess.run(
-            cmd,
-            shell=True,  # nosec B602
-            check=True,
+class MicrophoneController:
+    """Main controller for microphone volume management."""
+
+    def __init__(self, config: Config):
+        """Initialize the microphone controller."""
+        self.config = config
+        self.audio_monitor = AudioMonitor(
+            threshold=config.audio_threshold,
+            sample_duration=config.sample_duration,
+            call_detection_duration=config.call_detection_duration,
+            call_activity_ratio=config.call_activity_ratio,
         )
-        return True
-    except subprocess.CalledProcessError as e:
-        logging.error(f"Failed to set volume: {e}")
-        return False
+        self.volume_controller = get_volume_controller()
+        self.running = True
+        self.in_call = False
+        self.last_call_check = 0.0
 
+        # Setup signal handlers
+        signal.signal(signal.SIGINT, self._signal_handler)
+        signal.signal(signal.SIGTERM, self._signal_handler)
 
-def get_mic_volume() -> Optional[int]:
-    """Get current microphone input volume."""
-    try:
-        cmd = "osascript -e 'input volume of (get volume settings)'"
-        result = subprocess.run(
-            cmd,
-            shell=True,  # nosec B602
-            capture_output=True,
-            text=True,
-            check=True,
+    def _signal_handler(self, signum: int, frame) -> None:
+        """Handle shutdown signals gracefully."""
+        logging.info(f"Received signal {signum}, shutting down gracefully...")
+        self.running = False
+
+    def run(self) -> None:
+        """Run the main control loop."""
+        logging.info(
+            f"Starting microphone level controller with settings:\n"
+            f"- Target Volume: {self.config.target_volume}\n"
+            f"- Active Check Interval: {self.config.active_interval}s\n"
+            f"- Idle Check Interval: {self.config.idle_interval}s\n"
+            f"- Call Check Interval: {self.config.call_interval}s\n"
+            f"- Log Path: {self.config.log_path}"
         )
-        return int(result.stdout.strip())
-    except subprocess.CalledProcessError as e:
-        logging.error(f"Failed to get volume: {e}")
-        return None
 
+        try:
+            while self.running:
+                current_time = time.time()
 
-def is_audio_active(
-    threshold=0.01,
-    duration=1.0,
-) -> bool:
-    """Check if there's significant audio activity on the microphone."""
-    try:
-        # Get default input device
-        device_info = sd.query_devices(kind="input")
-        sample_rate = int(device_info["default_samplerate"])
+                # Periodically do a full call detection check
+                if current_time - self.last_call_check > self.config.call_interval:
+                    self.in_call = self.audio_monitor.detect_call_activity()
+                    self.last_call_check = current_time
+                    logging.info(
+                        f"Call status check: {'in call' if self.in_call else 'not in call'}"
+                    )
 
-        # Record audio for specified duration
-        recording = sd.rec(
-            int(duration * sample_rate),
-            channels=1,
-            dtype="float32",
-            samplerate=sample_rate,
-        )
-        sd.wait()
+                if self.in_call:
+                    self._handle_active_call()
+                    time.sleep(self.config.active_interval)
+                else:
+                    time.sleep(self.config.idle_interval)
 
-        # Calculate RMS value
-        rms = np.sqrt(np.mean(recording**2))
+        except Exception as e:
+            logging.error(f"Unexpected error in main loop: {e}", exc_info=True)
+            raise
+        finally:
+            self.cleanup()
 
-        return rms > threshold
+    def _handle_active_call(self) -> None:
+        """Handle volume adjustment during an active call."""
+        current_volume = self.volume_controller.get_volume()
 
-    except Exception as e:
-        logging.error(f"Error detecting audio: {e}")
-        return False
+        if current_volume is not None and current_volume != self.config.target_volume:
+            logging.info(
+                f"In call: Adjusting volume from {current_volume} to {self.config.target_volume}"
+            )
+            success = self.volume_controller.set_volume(self.config.target_volume)
+            if not success:
+                logging.warning("Failed to adjust volume, will retry on next check")
 
-
-def detect_call_activity(
-    audio_check_duration=5,
-) -> bool:
-    """Detect if we're likely in a call by monitoring audio activity over time."""
-    audio_samples = []
-
-    # Take several samples over a period
-    for _ in range(audio_check_duration):
-        audio_samples.append(is_audio_active())
-        time.sleep(1)
-
-    # If we detect audio activity in at least 40% of samples,
-    # we're probably in a call
-    return sum(audio_samples) / len(audio_samples) >= 0.4
+    def cleanup(self) -> None:
+        """Clean up resources."""
+        logging.info("Cleaning up resources...")
+        self.audio_monitor.cleanup()
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse command line arguments."""
     parser = argparse.ArgumentParser(
         description="Automatic microphone volume control for macOS calls and meetings"
     )
     parser.add_argument(
         "--target-volume",
         type=int,
-        default=80,
         help="Target microphone volume level (0-100)",
         choices=range(0, 101),
         metavar="VOLUME",
@@ -105,90 +105,109 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--active-interval",
         type=int,
-        default=3,
-        help="Seconds between checks during calls (default: 3)",
+        help="Seconds between checks during calls",
         metavar="SECONDS",
     )
     parser.add_argument(
         "--idle-interval",
         type=int,
-        default=15,
-        help="Seconds between checks when idle (default: 15)",
+        help="Seconds between checks when idle",
         metavar="SECONDS",
     )
     parser.add_argument(
         "--call-interval",
         type=int,
-        default=30,
-        help="Seconds between full call detection checks (default: 30)",
+        help="Seconds between full call detection checks",
         metavar="SECONDS",
     )
     parser.add_argument(
         "--log-path",
         type=str,
-        default="mic_control.log",
-        help="Path to the log file (default: mic_control.log)",
+        help="Path to the log file",
         metavar="PATH",
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        help="Path to configuration file",
+        metavar="CONFIG_PATH",
+    )
+    parser.add_argument(
+        "--save-config",
+        action="store_true",
+        help="Save current configuration to file",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug logging",
     )
     return parser.parse_args()
 
 
+def setup_logging(config: Config) -> None:
+    """Setup logging configuration."""
+    log_level = logging.DEBUG if config.log_level == "DEBUG" else logging.INFO
+
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.FileHandler(config.log_path),
+            logging.StreamHandler(),
+        ],
+    )
+
+    # Set library log levels
+    logging.getLogger("sounddevice").setLevel(logging.WARNING)
+
+
 def main() -> None:
+    """Main entry point."""
     args = parse_args()
 
-    log_path = args.log_path
+    # Load configuration
+    config = Config.load(args)
 
-    # Validate log path before setting up logging
+    # Override with debug flag if provided
+    if args.debug:
+        config.log_level = "DEBUG"
+
+    # Save config if requested
+    if args.save_config:
+        config.save()
+        print(f"Configuration saved to {Path.home() / '.mic_control' / 'config.json'}")
+        return
+
+    # Validate configuration
     try:
-        log_path = validate_log_path(args.log_path)
+        config.validate()
+    except ValueError as e:
+        print(f"Invalid configuration: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    # Validate log path
+    try:
+        config.log_path = validate_log_path(str(config.log_path))
     except SystemExit as e:
         print(str(e), file=sys.stderr)
         sys.exit(1)
 
     # Setup logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(message)s",
-        handlers=[
-            logging.FileHandler(log_path),
-            logging.StreamHandler(),
-        ],
-    )
+    setup_logging(config)
 
-    # Log the configuration
-    logging.info(
-        f"Starting microphone level controller with settings:\n"
-        f"- Target Volume: {args.target_volume}\n"
-        f"- Active Check Interval: {args.active_interval}s\n"
-        f"- Idle Check Interval: {args.idle_interval}s\n"
-        f"- Call Check Interval: {args.call_interval}s\n"
-        f"- Log Path: {log_path}"
-    )
+    # Create and run controller
+    controller = MicrophoneController(config)
 
-    last_call_check = 0
-    in_call = False
-
-    while True:
-        current_time = time.time()
-
-        # Periodically do a full call detection check
-        if current_time - last_call_check > args.call_interval:
-            in_call = detect_call_activity()
-            last_call_check = current_time
-            logging.info(f"Call status check: {'in call' if in_call else 'not in call'}")
-
-        if in_call:
-            current_volume = get_mic_volume()
-
-            if current_volume is not None and current_volume != args.target_volume:
-                logging.info(
-                    f"In call: Adjusting volume from {current_volume} to {args.target_volume}"
-                )
-                set_mic_volume(args.target_volume)
-
-            time.sleep(args.active_interval)
-        else:
-            time.sleep(args.idle_interval)
+    try:
+        controller.run()
+    except KeyboardInterrupt:
+        logging.info("Interrupted by user")
+    except Exception as e:
+        logging.error(f"Fatal error: {e}", exc_info=True)
+        sys.exit(1)
+    finally:
+        logging.info("Microphone controller stopped")
 
 
 if __name__ == "__main__":

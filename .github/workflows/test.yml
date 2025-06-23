@@ -96,17 +96,9 @@ jobs:
       - name: Run Bandit
         run: poetry run bandit -r mic_control/ -v
 
-      - name: Run Safety Check
-        continue-on-error: true
-        run: |
-          poetry run pip install safety
-          poetry run safety check --ignore 70612
-
       - name: Run pip-audit
         continue-on-error: true
-        run: |
-          poetry run pip install pip-audit
-          poetry run pip-audit --ignore jinja2
+        run: poetry run pip-audit --ignore jinja2
 
   test:
     name: test
@@ -143,5 +135,17 @@ jobs:
       - name: Install Dependencies (including dev)
         run: poetry install --with dev
 
-      - name: Run tests with coverage
-        run: poetry run pytest tests/ -v --cov=mic_control --cov-report=term-missing
+      - name: Run unit tests
+        run: poetry run pytest tests/unit/ -v --cov=mic_control --cov-report=term-missing
+        
+      - name: Run integration tests
+        run: poetry run pytest tests/integration/ -v --cov=mic_control --cov-append --cov-report=term-missing
+        
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        if: matrix.python-version == '3.12'
+        continue-on-error: true
+        with:
+          fail_ci_if_error: false
+          # Note: To avoid rate limits, add CODECOV_TOKEN to your repository secrets
+          # Get your token at https://app.codecov.io/gh/bulletinmybeard/py-macos-mic-control/settings
